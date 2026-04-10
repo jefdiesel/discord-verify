@@ -10,10 +10,10 @@
   },
   "dependencies": {
     "@vercel/kv": "^3.0.0",
-    "bip322-js": "^2.0.0",
+    "bip322-js": "^3.0.0",
     "discord-interactions": "^4.1.0",
     "next": "^15.0.0",
-    "ordiscan": "^4.0.0",
+    "ordiscan": "^1.4.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "siwe": "^3.0.0",
