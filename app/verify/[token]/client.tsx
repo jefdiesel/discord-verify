@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Providers } from "@/app/providers";
 import { useAccount, useConnect, useSignMessage, useDisconnect } from "wagmi";
 import { SiweMessage } from "siwe";
@@ -47,12 +47,18 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 // ---------- ETH ----------
 
 function EthFlow({ verifyToken }: Props) {
-  const { address, isConnected } = useAccount();
-  const { connectors, connect, status: connectStatus } = useConnect();
+  const { address, isConnected, status: accountStatus } = useAccount();
+  const { connectors, connect, status: connectStatus, error: connectError, reset } = useConnect();
   const { disconnect } = useDisconnect();
   const { signMessageAsync } = useSignMessage();
   const [result, setResult] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  // wagmi state hydrates from storage on the client; render a stable shell
+  // until then so we don't flip from "Connect" to "Connected" on mount.
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return <div style={{ opacity: 0.5 }}>Loading…</div>;
 
   async function handleVerify() {
     if (!address) return;
@@ -94,14 +100,44 @@ function EthFlow({ verifyToken }: Props) {
     }
   }
 
-  if (!isConnected) {
+  // Always show a "force reset" path so users stuck in a half-connected
+  // state from a multi-wallet browser (Phantom + MetaMask both injecting)
+  // can recover.
+  function forceReset() {
+    reset();
+    disconnect();
+    setResult(null);
+  }
+
+  if (!isConnected || !address) {
     return (
       <div>
+        <p style={{ fontSize: 12, opacity: 0.6, marginTop: 0 }}>
+          Status: {accountStatus} {connectStatus === "pending" && "· connecting…"}
+        </p>
+        {connectors.length === 0 && (
+          <p style={{ color: "#fbbf24" }}>
+            No injected wallet detected. Install Phantom, MetaMask, or another browser wallet.
+          </p>
+        )}
         {connectors.map((c) => (
-          <button key={c.uid} onClick={() => connect({ connector: c })} disabled={connectStatus === "pending"} style={btn}>
+          <button
+            key={c.uid}
+            onClick={() => connect({ connector: c })}
+            disabled={connectStatus === "pending"}
+            style={btn}
+          >
             Connect {c.name}
           </button>
         ))}
+        {connectError && (
+          <p style={{ color: "#f87171", marginTop: 12, fontSize: 13 }}>
+            Connect failed: {connectError.message}
+          </p>
+        )}
+        <button onClick={forceReset} style={{ ...btn, background: "transparent", border: "1px solid #2a3340", marginTop: 12 }}>
+          Reset
+        </button>
       </div>
     );
   }
@@ -112,7 +148,7 @@ function EthFlow({ verifyToken }: Props) {
       <button onClick={handleVerify} disabled={busy} style={btn}>
         {busy ? "Verifying…" : "Sign & verify"}
       </button>
-      <button onClick={() => disconnect()} style={{ ...btn, background: "transparent", border: "1px solid #2a3340" }}>
+      <button onClick={forceReset} style={{ ...btn, background: "transparent", border: "1px solid #2a3340" }}>
         Disconnect
       </button>
       {result && <p style={{ marginTop: 12 }}>{result}</p>}
