@@ -5,7 +5,8 @@
 // rules added via the admin UI, use the admin UI instead.
 
 import "dotenv/config";
-import { kv } from "@vercel/kv";
+import { Redis } from "@upstash/redis";
+const kv = new Redis({ url: process.env.KV_REST_API_URL!, token: process.env.KV_REST_API_TOKEN! });
 import type { Rule } from "../lib/types";
 
 const rules: Rule[] = [

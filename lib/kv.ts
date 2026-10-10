@@ -1,4 +1,14 @@
-import { kv } from "@vercel/kv";
+import { Redis } from "@upstash/redis";
+
+// Upstash REST client (was @vercel/kv). Created lazily so env is read per request on Workers.
+let _kv: Redis | null = null;
+const kv = new Proxy({} as Redis, {
+  get(_t, prop) {
+    _kv ??= new Redis({ url: process.env.KV_REST_API_URL!, token: process.env.KV_REST_API_TOKEN! });
+    const v = (_kv as any)[prop];
+    return typeof v === "function" ? v.bind(_kv) : v;
+  },
+});
 import type { Rule, VerifyToken, VerifiedAddress } from "./types";
 
 // ---------- Verify tokens (one-time, short-lived) ----------
